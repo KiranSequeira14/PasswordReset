@@ -1,6 +1,8 @@
 package com.passwordReset.services;
 
+import com.passwordReset.DTO.EmailDetails;
 import com.passwordReset.DTO.UserDTO;
+import com.passwordReset.emailServices.EmailService;
 import com.passwordReset.entity.User;
 import com.passwordReset.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,16 +23,28 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public String handleForgotPassword(UserDTO userDTO){
+    @Autowired
+    private EmailService emailService;
+
+    public String handleForgotPassword(UserDTO userDTO) {
         String res = this.forgotPassword(userDTO);
 
-        return res.startsWith("Invalid")?res:env.getProperty("password.reset.link")+res;
+        if(res.startsWith("Invalid"))
+            return res;
+
+        String resetLink = env.getProperty("password.reset.link") + res;
+        //Send the reset link to emailAddress
+        String emailBody = "Hey! \n\nHere's the link to reset the password \n\n"+resetLink+" \n\n\n\nThanks";
+        String subject = "Password Reset Link";
+        emailService.sendSimpleEmail(new EmailDetails(userDTO.getEmail(),emailBody,subject));
+
+        return resetLink;
     }
 
-    private String forgotPassword(UserDTO userDTO){
+    private String forgotPassword(UserDTO userDTO) {
         Optional<User> userOptional = Optional.ofNullable(userRepository.findByEmail(userDTO.getEmail()));
 
-        if(!userOptional.isPresent())
+        if (!userOptional.isPresent())
             return "Invalid user email Id";
 
         User user = userOptional.get();
@@ -41,17 +55,17 @@ public class UserService {
         return user.getToken();
     }
 
-    public String handleResetPassword(String token, UserDTO userDTO){
+    public String handleResetPassword(String token, UserDTO userDTO) {
         Optional<User> userOptional = Optional.ofNullable(userRepository.findByToken(token));
 
-        if(!userOptional.isPresent()) {
+        if (!userOptional.isPresent()) {
             return "Invalid token";
         }
 
         User user = userOptional.get();
 
         LocalDateTime creationTime = user.getTokenCreationDate();
-        if(isTokenExpired(creationTime)){
+        if (isTokenExpired(creationTime)) {
             return "Token expired";
         }
 
@@ -71,9 +85,9 @@ public class UserService {
                 .append(UUID.randomUUID().toString()).toString();
     }
 
-    private boolean isTokenExpired(LocalDateTime creationTime){
+    private boolean isTokenExpired(LocalDateTime creationTime) {
         LocalDateTime currentTime = LocalDateTime.now();
-        Duration diff = Duration.between(creationTime,currentTime);
+        Duration diff = Duration.between(creationTime, currentTime);
 
         return diff.toMinutes() >= Long.parseLong(env.getProperty("token.expiry.minutes"));
     }

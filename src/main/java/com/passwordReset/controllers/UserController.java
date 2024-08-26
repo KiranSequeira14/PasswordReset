@@ -14,12 +14,12 @@ public class UserController {
 
 
     @PostMapping("/forgot-password")
-    public String handleForgotPassword(@RequestBody UserDTO userDTO){
+    public String handleForgotPassword(@RequestBody UserDTO userDTO) {
         return userService.handleForgotPassword(userDTO);
     }
 
     @PutMapping("/reset-password")
-    public String handleResetPassword(@RequestParam String token, @RequestBody UserDTO userDTO){
+    public String handleResetPassword(@RequestParam String token, @RequestBody UserDTO userDTO) {
         return userService.handleResetPassword(token, userDTO);
     }
 }
